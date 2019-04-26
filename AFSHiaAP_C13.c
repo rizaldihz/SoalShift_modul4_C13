@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <grp.h>
 #include <pwd.h>
 
@@ -63,8 +64,45 @@ static void* pre_init(struct fuse_conn_info *conn)
 		memset(fpath,0,sizeof(fpath));
 		sprintf(fpath,"%s%s", dirpath, folde1r);
 		mkdir(fpath,0755);
+		memset(fpath,0,sizeof(fpath));
 
+		pid_t child1;
+		child1=fork();
+		if(child1==0){
+			DIR *dp;
+			struct dirent *de;
+			dp = opendir(dirpath);
+			while((de = readdir(dp))){
+				if(strcmp(de->d_name,".")!=0 && strcmp(de->d_name,"..")!=0){
+					char ext[1000] = ".mkv";
+					enc(ext);
+					if(strlen(de->d_name)>7 && strncmp(de->d_name+strlen(de->d_name)-8,ext,4)==0){
 
+							char joined[1000];
+							char video[1000] = "/Videos";
+							enc(video);
+							sprintf(joined,"%s%s/",dirpath,video);
+							strncat(joined,de->d_name,strlen(de->d_name)-4);
+							FILE* mainj;
+							mainj = fopen(joined,"a+");
+							FILE* need;
+							char this[1000];
+							sprintf(this,"%s/%s",dirpath,de->d_name);
+							need = fopen(this,"r");
+							int c;
+							while(1) {
+   								c = fgetc(need);
+   								if( feof(need) ) {
+   								   break;
+   								}
+   								fprintf(mainj,"%c",c);
+   							}
+							
+					}
+				}
+			}
+			exit(EXIT_SUCCESS);
+		}
 
         (void) conn;
         return NULL;
