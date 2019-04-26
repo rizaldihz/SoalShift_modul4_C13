@@ -153,8 +153,6 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	int res;
 
-	/* On Linux this could just be 'mknod(path, mode, rdev)' but this
-	   is more portable */
 	char fpath[1000];
     char name[1000];
 	sprintf(name,"%s",path);
@@ -215,29 +213,72 @@ static int xmp_unlink(const char *path)
 		strftime(t, 22, "_%Y-%m-%d_%H:%M:%S", localtime(&now));
 
 		char zip[1000];
-		sprintf(zip,"/home/duhbuntu/sisop/seslab4/delel/RecycleBin%s_deleted_%s.zip",name,t);
+		char fzip[1000];
+		char fname[1000];
+		memset(zip,0,sizeof(zip));
+		memset(fzip,0,sizeof(fzip));
+		memset(fname,0,sizeof(fname));
+		sprintf(zip,"/RecycleBin%s_deleted_%s.zip",name,t);
+		enc(name);
+		sprintf(fname,"%s%s",dirpath,name);
+		enc(zip);
+		sprintf(fzip,"%s%s",dirpath,zip);
+		pid_t child1,child2;
+		
+		child1=fork();
+		if(child1==0){
+			execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j",fzip,fname,NULL);
+			exit(EXIT_SUCCESS);
+		}
+		else{
+			wait(NULL);
+		}
+		
 
-		sprintf(name,"/home/duhbuntu/sisop/seslab4/delel%s",path);
-		// pid_t child1,child2;
-		
-		// child1=fork();
-		// if(child1==0){
-		// 	execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j",zip,name,NULL);
-		// }
-		// else{
-		// 	wait(NULL);
-		// }
-		memset(name,0,sizeof(name));
-		sprintf(name,"/home/duhbuntu/sisop/seslab4/delel/Backup%s*.ekstensi",path);
-		printf("%s\n",name);		
-		
-		// child2=fork();
-		// if(child2==0){
-		// 	execl("/usr/bin/zip","/usr/bin/zip","-u","-q","-m","-j",zip,name,NULL);
-		// }
-		// else{
-		// 	wait(NULL);
-		// }
+		char fback[1000] = "/Backup";
+		enc(fback);
+		char foldbackp[1000];
+		sprintf(foldbackp,"%s%s",dirpath,fback);
+		DIR *dp;
+		struct dirent *de;
+
+		dp = opendir(foldbackp);
+		while((de = readdir(dp))){
+			if(strncmp(name+1,de->d_name,strlen(de->d_name)-29)==0){
+
+				memset(fzip,0,sizeof(fzip));
+				memset(zip,0,sizeof(zip));
+				memset(fname,0,sizeof(fname));
+				dec(name);
+				sprintf(zip,"/RecycleBin%s_deleted_%s.zip",name,t);
+				sprintf(fname,"%s/%s",foldbackp,de->d_name);
+				enc(zip);
+				enc(name);
+				sprintf(fzip,"%s%s",dirpath,zip);
+
+				child1=fork();
+				if(child1==0){
+					execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j","-u",fzip,fname,NULL);
+					exit(EXIT_SUCCESS);
+				}
+				else{
+					wait(NULL);
+				}
+			}
+		}
+		dec(name);
+		memset(zip,0,sizeof(zip));
+		memset(fzip,0,sizeof(fzip));
+		memset(fname,0,sizeof(fname));
+		sprintf(zip,"/RecycleBin%s_deleted_%s.zip",name,t);
+		enc(name);
+		sprintf(fname,"%s%s",dirpath,name);
+		enc(zip);
+		sprintf(fzip,"%s%s",dirpath,zip);
+		memset(fname,0,sizeof(fname));
+		strncpy(fname,fzip,strlen(fzip));
+		strcat(fzip,".zip");
+		rename(fzip,fname);
 	}
 	else{
     	enc(name);
@@ -270,37 +311,13 @@ static int xmp_rename(const char *from, const char *to)
     char new_to[1000];
 	char name1[1000];
 	char name2[1000];
-	if(strcmp(to+strlen(to)-4,".zip")!=0){
-		sprintf(name1,"%s",from);
-		sprintf(name2,"/Backup%s",to);
-
-		char folder[100000] = "/Backup";
-		enc(folder);
-		char fpath[1000];
-    	sprintf(fpath,"%s%s", dirpath, folder);
-		mkdir(fpath,0755);
-
-		char t[1000];
-		time_t now = time(NULL);
-		strftime(t, 22, "_%Y-%m-%d_%H:%M:%S", localtime(&now));
-    	strcat(name2,t);
-		strcat(name2,".ekstensi");
-		printf("%s\n",name2);
-		enc(name1);
-		enc(name2);
-    	sprintf(new_from,"%s%s",dirpath,name1);
-    	sprintf(new_to,"%s%s",dirpath,name2);
-		res = rename(new_from, new_to);
-	}
-	else{
-		sprintf(name1,"%s",from);
-		sprintf(name2,"%s",to);
-		enc(name1);
-		enc(name2);
-    	sprintf(new_from,"%s%s",dirpath,name1);
-    	sprintf(new_to,"%s%s",dirpath,name2);
-		res = rename(new_from, new_to);
-	}
+	sprintf(name1,"%s",from);
+	sprintf(name2,"%s",to);
+	enc(name1);
+	enc(name2);
+    sprintf(new_from,"%s%s",dirpath,name1);
+    sprintf(new_to,"%s%s",dirpath,name2);
+	res = rename(new_from, new_to);
 	if (res == -1)
 		return -errno;
 
@@ -433,19 +450,48 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	int res;
     char fpath[1000];
     char name[1000];
+
 	sprintf(name,"%s",path);
     enc(name);
-	sprintf(fpath, "%s%s",dirpath,name);
+	sprintf(fpath,"%s%s",dirpath,name);
+
+	char newname[1000];
+	char folder[1000] = "/Backup";
+	enc(folder);
+	char folderdir[1000];
+	sprintf(folderdir,"%s%s",dirpath,folder);
+	mkdir(folderdir,0755);
+
 	(void) fi;
 	fd = open(fpath, O_WRONLY);
 	if (fd == -1)
 		return -errno;
-
+	printf("%s\n",buf);
 	res = pwrite(fd, buf, size, offset);
 	if (res == -1)
 		res = -errno;
 
 	close(fd);
+
+	struct stat sd;
+	if(stat(fpath,&sd)>-1){
+		char t[1000];
+		time_t now = time(NULL);
+		strftime(t, 22, "_%Y-%m-%d_%H:%M:%S", localtime(&now));
+		dec(name);
+		sprintf(newname,"/Backup%s%s.ekstensi",name,t);
+		enc(newname);
+		memset(fpath,'\0',sizeof(fpath));
+		sprintf(fpath,"%s%s",dirpath,newname);
+		// printf("%s\n",fpath);
+	
+		FILE *fptr = fopen(fpath, "w+"); 
+		fprintf(fptr,"%s",buf);
+		fclose(fptr);
+
+		return res;
+	}
+	
 	return res;
 }
 
