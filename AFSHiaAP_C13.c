@@ -311,7 +311,7 @@ static int xmp_unlink(const char *path)
 				sprintf(fzip,"%s%s",dirpath,zip);
 				char dum[10000];
 				dec(de->d_name);
-				sprintf(dum,"%s%s",dirpath,de->d_name);
+				sprintf(dum,"%s/%s",dirpath,de->d_name);
 				enc(de->d_name);				
 
 				child1=fork();
@@ -325,7 +325,7 @@ static int xmp_unlink(const char *path)
 
 				child1=fork();
 				if(child1==0){
-					execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j",fzip,dum,NULL);
+					execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j","-u",fzip,dum,NULL);
 					exit(EXIT_SUCCESS);
 				}
 				else{
