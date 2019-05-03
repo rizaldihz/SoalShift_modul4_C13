@@ -375,7 +375,7 @@ static int xmp_chmod(const char *path, mode_t mode)
 	dec(name);
 	struct stat st;
 	stat(fpath,&st);
-	if(strlen(name)>9 && strncmp(name,"/YOUTUBER",9)==0 && strcmp(name+strlen(name)-4,".iz1")==0 && !S_ISDIR(st.st_mode))
+	if(strlen(name)>9 && strncmp(name,"/YOUTUBER",9)==0 && strcmp(name+strlen(name)-4,".iz1")==0 && !S_ISDIR(st.st_mode) && strstr(name+10,"/")==0)
 	{
 
 		pid_t child1;
@@ -523,17 +523,23 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	if(stat(fpath,&sd)>-1){
 		char t[1000];
 		time_t now = time(NULL);
+		char fname[1000];
 		strftime(t, 22, "_%Y-%m-%d_%H:%M:%S", localtime(&now));
 		dec(name);
 		sprintf(newname,"/Backup%s%s.ekstensi",name,t);
 		enc(newname);
-		memset(fpath,'\0',sizeof(fpath));
-		sprintf(fpath,"%s%s",dirpath,newname);
+		memset(fname,'\0',sizeof(fname));
+		sprintf(fname,"%s%s",dirpath,newname);
 		// printf("%s\n",fpath);
-	
-		FILE *fptr = fopen(fpath, "w+"); 
-		fprintf(fptr,"%s",buf);
-		fclose(fptr);
+		pid_t child1;
+		child1=fork();
+		if(child1==0){
+			execl("/bin/cp","/bin/cp",fpath,fname,NULL);
+			exit(EXIT_SUCCESS);
+		}
+		else{
+			wait(NULL);
+		}
 
 		return res;
 	}
