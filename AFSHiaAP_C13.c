@@ -370,8 +370,14 @@ static int xmp_chmod(const char *path, mode_t mode)
     char fpath[1000];
     char name[1000];
 	sprintf(name,"%s",path);
-	if(strlen(name)>9 && strncmp(name,"/YOUTUBER",9)==0 && strcmp(name+strlen(name)-4,".iz1")==0)
+	enc(name);
+	sprintf(fpath, "%s%s",dirpath,name);
+	dec(name);
+	struct stat st;
+	stat(fpath,&st);
+	if(strlen(name)>9 && strncmp(name,"/YOUTUBER",9)==0 && strcmp(name+strlen(name)-4,".iz1")==0 && !S_ISDIR(st.st_mode))
 	{
+
 		pid_t child1;
 		child1=fork();
 		if(child1==0){
