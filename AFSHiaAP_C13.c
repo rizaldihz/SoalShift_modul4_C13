@@ -241,7 +241,7 @@ static int xmp_unlink(const char *path)
     char fpath[1000];
     char name[1000];
 	sprintf(name,"%s",path);
-	if(strstr(name,".swp")==0 && strstr(name,".gooutpustream")==0){
+	if(strstr(name,".swp")==0 && strstr(name,".gooutpustream")==0 && strstr(name,"/RecycleBin/") == 0){
 		char folder[100000] = "/RecycleBin";
 		enc(folder);
 		char fpath[1000];
@@ -264,16 +264,30 @@ static int xmp_unlink(const char *path)
 		enc(zip);
 		sprintf(fzip,"%s%s",dirpath,zip);
 		pid_t child1;
+		char dum[10000];
+		dec(name);
+		sprintf(dum,"%s%s",dirpath,name);
+		enc(name);
+
 		
 		child1=fork();
 		if(child1==0){
-			execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j",fzip,fname,NULL);
+			execl("/bin/cp","/bin/cp",fname,dum,NULL);
 			exit(EXIT_SUCCESS);
 		}
 		else{
 			wait(NULL);
 		}
 		
+		child1=fork();
+		if(child1==0){
+			execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j",fzip,dum,NULL);
+			exit(EXIT_SUCCESS);
+		}
+		else{
+			wait(NULL);
+		}
+		remove(fname);
 
 		char fback[1000] = "/Backup";
 		enc(fback);
@@ -295,15 +309,29 @@ static int xmp_unlink(const char *path)
 				enc(zip);
 				enc(name);
 				sprintf(fzip,"%s%s",dirpath,zip);
+				char dum[10000];
+				dec(de->d_name);
+				sprintf(dum,"%s%s",dirpath,de->d_name);
+				enc(de->d_name);				
 
 				child1=fork();
 				if(child1==0){
-					execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j","-u",fzip,fname,NULL);
+					execl("/bin/cp","/bin/cp",fname,dum,NULL);
 					exit(EXIT_SUCCESS);
 				}
 				else{
 					wait(NULL);
 				}
+
+				child1=fork();
+				if(child1==0){
+					execl("/usr/bin/zip","/usr/bin/zip","-q","-m","-j",fzip,dum,NULL);
+					exit(EXIT_SUCCESS);
+				}
+				else{
+					wait(NULL);
+				}
+				remove(fname);
 			}
 		}
 		dec(name);
@@ -520,7 +548,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	close(fd);
 
 	struct stat sd;
-	if(stat(fpath,&sd)>-1){
+	if(stat(fpath,&sd)>-1 && strstr(path,".swp")==0){
 		char t[1000];
 		time_t now = time(NULL);
 		char fname[1000];
