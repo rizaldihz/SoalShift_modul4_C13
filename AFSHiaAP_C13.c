@@ -19,9 +19,10 @@
 
 
 static const char *dirpath = "/home/duhbuntu/shift4";
-
+char ext[100000] = "\0";
+int ind_ext =0;
 char key[97] = "qE1~ YMUR2\"`hNIdPzi%^t@(Ao:=CQ,nx4S[7mHFye#aT6+v)DfKL$r?bkOGB>}!9_wV']jcp5JZ&Xl|\\8s;g<{3.u*W-0";
-
+int ges = 17;
 void enc(char* yangdienc)
 {
 	if(!strcmp(yangdienc,".") || !strcmp(yangdienc,"..")) return;
@@ -30,7 +31,7 @@ void enc(char* yangdienc)
 		for(int j=0;j<94;j++){
 			// printf("%c",key[j]);
 			if(yangdienc[i]==key[j]){
-				yangdienc[i] = key[(j+17)%94];
+				yangdienc[i] = key[(j+ges)%94];
 				break;
 			}
 		}
@@ -45,7 +46,7 @@ void dec(char* yangdidec)
 		for(int j=0;j<94;j++){
 			// printf("%c",key[j]);
 			if(yangdidec[i]==key[j]){
-				yangdidec[i] = key[(j+77)%94];
+				yangdidec[i] = key[(j+94-ges)%94];
 				break;
 			}
 		}
@@ -76,13 +77,15 @@ static void* pre_init(struct fuse_conn_info *conn)
 				if(strcmp(de->d_name,".")!=0 && strcmp(de->d_name,"..")!=0){
 					char ext[1000] = ".mkv";
 					enc(ext);
-					if(strlen(de->d_name)>7 && strncmp(de->d_name+strlen(de->d_name)-8,ext,4)==0){
+					if(strlen(de->d_name)>7 && strncmp(de->d_name+strlen(de->d_name)-4,ext,1)==0){
 
 							char joined[1000];
 							char video[1000] = "/Videos";
 							enc(video);
 							sprintf(joined,"%s%s/",dirpath,video);
 							strncat(joined,de->d_name,strlen(de->d_name)-4);
+							struct stat st;
+							if(stat(joined,&st)<0) creat(joined,0777);
 							FILE* mainj;
 							mainj = fopen(joined,"a+");
 							FILE* need;
@@ -90,14 +93,15 @@ static void* pre_init(struct fuse_conn_info *conn)
 							sprintf(this,"%s/%s",dirpath,de->d_name);
 							need = fopen(this,"r");
 							int c;
-							while(1) {
-   								c = fgetc(need);
-   								if( feof(need) ) {
-   								   break;
-   								}
+   							c = fgetc(need);
+							while(c!=EOF) {
    								fprintf(mainj,"%c",c);
    							}
-							
+							fclose(need);
+							fclose(mainj);
+							memset(this,0,sizeof(this));
+							memset(joined,0,sizeof(joined));
+
 					}
 				}
 			}
@@ -106,6 +110,14 @@ static void* pre_init(struct fuse_conn_info *conn)
 
         (void) conn;
         return NULL;
+}
+
+int check_ext(char* file){
+	ind_ext=0;
+	while(ind_ext<strlen(file)&&file[ind_ext]!='.') ind_ext++;
+	memset(ext,0,sizeof(ext));
+	strcpy(ext,file+ind_ext);
+	return ind_ext;
 }
 
 static int xmp_getattr(const char *path, struct stat *stbuf)
@@ -269,14 +281,15 @@ static int xmp_unlink(const char *path)
 		sprintf(dum,"%s%s",dirpath,name);
 		enc(name);
 
-		
+		int tunggu;
 		child1=fork();
 		if(child1==0){
 			execl("/bin/cp","/bin/cp",fname,dum,NULL);
 			exit(EXIT_SUCCESS);
 		}
 		else{
-			wait(NULL);
+			waitpid(child1, &tunggu, 0);
+			
 		}
 		
 		child1=fork();
@@ -285,9 +298,10 @@ static int xmp_unlink(const char *path)
 			exit(EXIT_SUCCESS);
 		}
 		else{
-			wait(NULL);
+			waitpid(child1, &tunggu, 0);
 		}
 		remove(fname);
+		strcat(fzip,".zip");
 
 		char fback[1000] = "/Backup";
 		enc(fback);
@@ -299,16 +313,11 @@ static int xmp_unlink(const char *path)
 		dp = opendir(foldbackp);
 		while((de = readdir(dp))){
 			if(strncmp(name+1,de->d_name,strlen(de->d_name)-29)==0){
-
-				memset(fzip,0,sizeof(fzip));
-				memset(zip,0,sizeof(zip));
+				
 				memset(fname,0,sizeof(fname));
 				dec(name);
-				sprintf(zip,"/RecycleBin%s_deleted_%s.zip",name,t);
 				sprintf(fname,"%s/%s",foldbackp,de->d_name);
-				enc(zip);
 				enc(name);
-				sprintf(fzip,"%s%s",dirpath,zip);
 				char dum[10000];
 				dec(de->d_name);
 				sprintf(dum,"%s/%s",dirpath,de->d_name);
@@ -320,7 +329,7 @@ static int xmp_unlink(const char *path)
 					exit(EXIT_SUCCESS);
 				}
 				else{
-					wait(NULL);
+					waitpid(child1, &tunggu, 0);
 				}
 
 				child1=fork();
@@ -329,22 +338,17 @@ static int xmp_unlink(const char *path)
 					exit(EXIT_SUCCESS);
 				}
 				else{
-					wait(NULL);
+					waitpid(child1, &tunggu, 0);					
 				}
 				remove(fname);
 			}
 		}
 		dec(name);
-		memset(zip,0,sizeof(zip));
 		memset(fzip,0,sizeof(fzip));
-		memset(fname,0,sizeof(fname));
-		sprintf(zip,"/RecycleBin%s_deleted_%s.zip",name,t);
 		enc(name);
-		sprintf(fname,"%s%s",dirpath,name);
-		enc(zip);
-		sprintf(fzip,"%s%s",dirpath,zip);
 		memset(fname,0,sizeof(fname));
-		strncpy(fname,fzip,strlen(fzip));
+		sprintf(fzip,"%s%s",dirpath,zip);
+		strcpy(fname,fzip);
 		strcat(fzip,".zip");
 		rename(fzip,fname);
 	}
@@ -554,7 +558,11 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 		char fname[1000];
 		strftime(t, 22, "_%Y-%m-%d_%H:%M:%S", localtime(&now));
 		dec(name);
-		sprintf(newname,"/Backup%s%s.ekstensi",name,t);
+		check_ext(name);
+		char shortn[100000];
+		memset(shortn,0,strlen(shortn));
+		strncpy(shortn,name,ind_ext);
+		sprintf(newname,"/Backup%s%s%s",shortn,t,ext);
 		enc(newname);
 		memset(fname,'\0',sizeof(fname));
 		sprintf(fname,"%s%s",dirpath,newname);
